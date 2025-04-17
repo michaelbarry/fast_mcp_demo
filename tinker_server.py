@@ -1,16 +1,26 @@
 import httpx
 from pydantic import BaseModel
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 from fastmcp.prompts import Message,UserMessage, AssistantMessage
 
-
-# Create an MCP server
+# Create the MCP server
 mcp = FastMCP("Tinker Server")
 
-
+# supporting classes
 class UserInfo(BaseModel):
     user_id: int
     notify: bool = False
+
+
+# context
+# Gain access to MCP server capabilities within your tool or resource functions by adding a parameter type-hinted with fastmcp.Context.
+@mcp.resource("system://status/{ctx}")
+async def get_system_status(ctx: Context) -> dict:
+    """Checks system status and logs information."""
+    await ctx.info("Checking system status...")
+    # Perform checks
+    await ctx.report_progress(1, 1) # Report completion
+    return {"status": "OK", "load": 0.5, "client": ctx.client_id}
 
 # prompts
 @mcp.prompt()
@@ -26,11 +36,9 @@ def debug_session_start(error_message: str) -> list[Message]:
         AssistantMessage("Okay, I can help with that. Can you provide the full traceback and tell me what you were trying to do?")
     ]
 
-# server.py
-from fastmcp import FastMCP
 
 
-# Add an addition tool
+# tools
 @mcp.tool()
 def add(a: int, b: int) -> int:
     """Add two numbers"""
@@ -41,20 +49,6 @@ def add(a: int, b: int) -> int:
 def get_greeting(name: str) -> str:
     """Get a personalized greeting"""
     return f"Hello, {name}!"
-
-
-# This is a resource template (dynamic resource)
-@mcp.resource("db://users/{user_id}/email")
-def get_user_email(user_id: str) -> str:
-    """Retrieves the email address for a given user ID."""
-    emails = {"123": "alice@example.com", "456": "bob@example.com"}
-    return emails.get(user_id, "not_found@example.com")
-
-
-@mcp.resource("config://app-version")
-def get_app_version() -> str:
-    """Returns the application version."""
-    return "v2.1.0"
 
 @mcp.tool()
 async def send_notification(user: UserInfo, message: str) -> dict:
@@ -71,3 +65,20 @@ def get_stock_price(ticker: str) -> float:
     # Replace with actual API call
     prices = {"AAPL": 180.50, "GOOG": 140.20}
     return prices.get(ticker.upper(), 0.0)
+
+
+
+
+# resource templates
+# This is a resource template (dynamic resource)
+@mcp.resource("db://users/{user_id}/email")
+def get_user_email(user_id: str) -> str:
+    """Retrieves the email address for a given user ID."""
+    emails = {"123": "alice@example.com", "456": "bob@example.com"}
+    return emails.get(user_id, "not_found@example.com")
+
+@mcp.resource("config://app-version")
+def get_app_version() -> str:
+    """Returns the application version."""
+    return "v2.1.0"
+
