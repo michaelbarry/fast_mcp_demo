@@ -1,74 +1,51 @@
-from flask import Flask, jsonify, request, make_response
+import asyncio
+import httpx
+from fastmcp import FastMCP
 
-app = Flask(__name__)
+# Import the OpenAPI spec from the separate file
+from petstore_spec import PETSTORE_SPEC
 
-# In-memory database for pets
-pets = [
-    {"id": "1", "name": "Fluffy", "type": "cat", "age": 3},
-    {"id": "2", "name": "Rex", "type": "dog", "age": 5},
-    {"id": "3", "name": "Bubbles", "type": "fish", "age": 1}
-]
-
-@app.route('/pets', methods=['GET'])
-def list_pets():
-    """List all pets"""
-    return jsonify(pets)
-
-@app.route('/pets', methods=['POST'])
-def create_pet():
-    """Create a new pet"""
-    new_pet = request.json
+def main():
+    # Create HTTP client pointing to our local server
+    client = httpx.AsyncClient(base_url="http://localhost:5000")
     
-    # Validate required fields
-    if 'name' not in new_pet or 'type' not in new_pet:
-        return jsonify({"error": "Name and type are required fields"}), 400
+    # Create the MCP server with our imported spec - notice the missing "await"
+    # FastMCP.from_openapi is a synchronous method in this version
+    mcp = FastMCP.from_openapi(
+        openapi_spec=PETSTORE_SPEC,
+        client=client,
+        name="PetStore"
+    )
     
-    # Generate a simple ID
-    if not new_pet.get('id'):
-        max_id = max([int(pet['id']) for pet in pets]) if pets else 0
-        new_pet['id'] = str(max_id + 1)
+    # Define an async function to get the components
+    async def get_components():
+        # Use get_ methods instead of list_ methods
+        tools = await mcp.get_tools()
+        resources = await mcp.get_resources()
+        templates = await mcp.get_resource_templates()
+        
+        print(f"Tools: {len(tools)}")
+        for tool in tools:
+            print(f"  - {tool}")
+            
+        print(f"Resources: {len(resources)}")
+        for resource in resources:
+            print(f"  - {resource}")
+            
+        print(f"Templates: {len(templates)}")
+        for template in templates:
+            print(f"  - {template}")
     
-    # Ensure age is an integer if provided
-    if 'age' in new_pet and not isinstance(new_pet['age'], int):
-        try:
-            new_pet['age'] = int(new_pet['age'])
-        except (ValueError, TypeError):
-            return jsonify({"error": "Age must be an integer"}), 400
+    # Run the async function to get components
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(get_components())
     
-    pets.append(new_pet)
-    
-    # Return 201 Created status code
-    response = make_response(jsonify(new_pet))
-    response.status_code = 201
-    return response
+    # Start the MCP server (this is synchronous)
+    print("\nStarting FastMCP server...")
+    mcp.run()
 
-@app.route('/pets/<petId>', methods=['GET'])
-def get_pet(petId):
-    """Get a pet by ID"""
-    for pet in pets:
-        if pet['id'] == petId:
-            return jsonify(pet)
-    
-    return jsonify({"error": "Pet not found"}), 404
-
-@app.errorhandler(404)
-def not_found(e):
-    return jsonify({"error": "Resource not found"}), 404
-
-@app.errorhandler(405)
-def method_not_allowed(e):
-    return jsonify({"error": "Method not allowed"}), 405
-
-@app.errorhandler(500)
-def internal_server_error(e):
-    return jsonify({"error": "Internal server error"}), 500
-
-if __name__ == '__main__':
-    print("Pet Store API Server")
-    print("Running on http://localhost:5000")
-    print("Endpoints:")
-    print("  GET  /pets - List all pets")
-    print("  POST /pets - Create a new pet")
-    print("  GET  /pets/{petId} - Get a pet by ID")
-    print("\nAvailable test pets:", pets)
-    app.run(debug=True)
+if __name__ == "__main__":
+    print("Pet Store FastMCP Client")
+    print("Make sure the petstore_server.py is running first!")
+    main()  # Call regular main, not asyncio.run(main())
