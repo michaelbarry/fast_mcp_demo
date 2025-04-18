@@ -11,4 +11,4 @@ api_client = httpx.AsyncClient(base_url="http://localhost:5000")
 mcp = FastMCP.from_openapi(openapi_spec=spec, client=api_client)
 
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run("stdio")
