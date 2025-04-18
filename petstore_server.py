@@ -43,7 +43,9 @@ def main():
     
     # Start the MCP server (this is synchronous)
     print("\nStarting FastMCP server...")
+    # mcp.run("sse")
     mcp.run()
+    
 
 if __name__ == "__main__":
     print("Pet Store FastMCP Client")
