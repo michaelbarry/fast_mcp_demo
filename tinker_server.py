@@ -4,7 +4,7 @@ from fastmcp import Context, FastMCP
 from fastmcp.prompts import Message,UserMessage, AssistantMessage
 
 # Create the MCP server
-mcp = FastMCP("Tinker Server")
+mcp = FastMCP("tinker")
 
 # supporting classes
 class UserInfo(BaseModel):
